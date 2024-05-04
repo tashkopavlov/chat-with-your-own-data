@@ -1,3 +1,6 @@
 langchain
 chainlit
 ipykernel
+beautifulsoup4
+sentence-transformers
+chromadb
