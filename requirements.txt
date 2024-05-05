@@ -4,3 +4,5 @@ ipykernel
 beautifulsoup4
 sentence-transformers
 chromadb
+nest_asyncio
+langchain-chroma
