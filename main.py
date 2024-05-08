@@ -1,97 +1,5 @@
-import os
-
 import chainlit as cl
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferWindowMemory
-from langchain.prompts import PromptTemplate
-from langchain_chroma import Chroma
-from langchain_community.llms import Ollama
-from langchain_community.embeddings.huggingface import HuggingFaceEmbeddings
-
-from constants import MODEL_KWARGS, MODEL_NAME, QA_CHAIN_PROMPT
-
-
-def set_custom_prompt():
-    """
-    Prompt template for QA retrieval for each vectorstore
-    """
-    prompt = PromptTemplate(
-        template=QA_CHAIN_PROMPT, input_variables=["context", "question"]
-    )
-    return prompt
-
-
-def create_retrieval_qa_chain(llm, prompt, db):
-    """
-    Empyt docstring
-    """
-    memory = ConversationBufferWindowMemory(
-        memory_key="chat_history",
-        return_messages=True,
-        output_key="answer",
-        k=2
-    )
-
-    retriever = db.as_retriever(search_type="mmr",
-                                search_kwargs={"k": 2, "fetch_k": 3})
-    qa_chain = ConversationalRetrievalChain.from_llm(
-        llm=llm,
-        retriever=retriever,
-        memory=memory,
-        combine_docs_chain_kwargs={'prompt': prompt},
-        return_source_documents=True,
-        verbose=True
-    )
-    return qa_chain
-
-
-def load_model(
-    model="llama2",
-    temperature=0.0,
-):
-    """
-    Empyt docstring
-    """
-    llm = Ollama(model=model, temperature=temperature)
-
-    return llm
-
-
-def create_retrieval_qa_bot(
-    model_name=MODEL_NAME,
-    persist_dir="db/chroma/",
-):
-    """
-    Empty docstring
-    """
-    if not os.path.exists(persist_dir):
-        raise FileNotFoundError(f"No directory found at {persist_dir}")
-
-    embedding = HuggingFaceEmbeddings(model_name=model_name,
-                                      model_kwargs=MODEL_KWARGS)
-
-    db = Chroma(persist_directory=persist_dir, embedding_function=embedding)
-
-    llm = load_model()
-
-    qa_prompt = (
-        set_custom_prompt()
-    )
-
-    qa = create_retrieval_qa_chain(
-        llm=llm, prompt=qa_prompt, db=db
-    )
-
-    return qa
-
-
-def retrieve_bot_answer(query):
-    """
-    Empyt docstring
-    """
-    qa_bot_instance = create_retrieval_qa_bot()
-    bot_response = qa_bot_instance({"query": query})
-    return bot_response
+from util.utils import create_retrieval_qa_bot
 
 
 @cl.on_chat_start
@@ -131,22 +39,23 @@ async def process_chat_message(message):
     callback_handler.answer_reached = True
     response = await qa_chain.acall(message.content,
                                     callbacks=[callback_handler])
-    bot_answer = response["answer"]
+
     source_documents = response["source_documents"]
 
     text_elements = []
 
     if source_documents:
-        for source_idx, source_doc in enumerate(source_documents):
-            source_name = f"source_{source_idx}"
+        for source_doc in source_documents:
             text_elements.append(
-                cl.Text(content=source_doc.page_content, name=source_name)
+                cl.Text(content=source_doc.page_content,
+                        name=source_doc.metadata['source'])
             )
         source_names = [txt_el.name for txt_el in text_elements]
 
         if source_names:
-            bot_answer += f"\nSources: {', '.join(source_names)}"
+            bot_answer = f"\nSources: {', '.join(source_names)}"
         else:
-            bot_answer += "\nNo sources found"
+            bot_answer = "\nNo sources found"
 
-    await cl.Message(content=bot_answer, elements=text_elements).send()
+        await cl.Message(content=bot_answer, elements=text_elements).send()
+   

@@ -1,6 +1,7 @@
 .venv/
 venv/
 experiment/db/
+experiment/.db/
 db/
 .chainlit/
 .mypy_cache/
