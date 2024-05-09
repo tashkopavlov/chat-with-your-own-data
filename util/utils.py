@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferWindowMemory
@@ -8,9 +7,8 @@ from langchain_chroma import Chroma
 from langchain_community.llms import Ollama
 from langchain_community.embeddings.huggingface import HuggingFaceEmbeddings
 
-from constants import MODEL_KWARGS, MODEL_NAME, QA_CHAIN_PROMPT
-
-ROOT_DIR = Path(__file__).parent.parent.__str__()
+from util.constants import MODEL_KWARGS, MODEL_NAME, PERSIST_DIRECTORY, \
+    QA_CHAIN_PROMPT
 
 
 def set_custom_prompt():
@@ -25,7 +23,8 @@ def set_custom_prompt():
 
 def create_retrieval_qa_chain(llm, prompt, db):
     """
-    Empyt docstring
+    Create the ConversationalRetrievalChain with the 
+    ConversationBufferWindowMemory and the retriever
     """
     memory = ConversationBufferWindowMemory(
         memory_key="chat_history",
@@ -34,8 +33,7 @@ def create_retrieval_qa_chain(llm, prompt, db):
         k=2
     )
 
-    retriever = db.as_retriever(search_type="mmr",
-                                search_kwargs={"k": 4, "fetch_k": 15})
+    retriever = db.as_retriever(search_type="mmr")
 
     qa_chain = ConversationalRetrievalChain.from_llm(
         llm=llm,
@@ -45,6 +43,7 @@ def create_retrieval_qa_chain(llm, prompt, db):
         return_source_documents=True,
         verbose=True
     )
+
     return qa_chain
 
 
@@ -53,7 +52,7 @@ def load_model(
     temperature=0.0,
 ):
     """
-    Empyt docstring
+    Create the LLM Model
     """
     llm = Ollama(model=model, temperature=temperature)
 
@@ -62,10 +61,10 @@ def load_model(
 
 def create_retrieval_qa_bot(
     model_name=MODEL_NAME,
-    persist_dir=ROOT_DIR + "/db/chroma/",
+    persist_dir=PERSIST_DIRECTORY,
 ):
     """
-    Empty docstring
+    Instantiate the embedding model, db, llm and retrieval chain
     """
     if not os.path.exists(persist_dir):
         raise FileNotFoundError(f"No directory found at {persist_dir}")
@@ -90,7 +89,8 @@ def create_retrieval_qa_bot(
 
 def retrieve_bot_answer(query):
     """
-    Empyt docstring
+    This is the entypoint to the Chainlit application where 
+    we create the retrieval chain and provide it with a query
     """
     qa_bot_instance = create_retrieval_qa_bot()
     bot_response = qa_bot_instance({"query": query})

@@ -58,4 +58,3 @@ async def process_chat_message(message):
             bot_answer = "\nNo sources found"
 
         await cl.Message(content=bot_answer, elements=text_elements).send()
-   
