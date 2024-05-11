@@ -45,12 +45,7 @@ async def process_chat_message(message):
     text_elements = []
 
     if source_documents:
-        for source_doc in source_documents:
-            text_elements.append(
-                cl.Text(content=source_doc.page_content,
-                        name=source_doc.metadata['source'])
-            )
-        source_names = [txt_el.name for txt_el in text_elements]
+        source_names = {doc.metadata['source'] for doc in source_documents}
 
         if source_names:
             bot_answer = f"\nSources: {', '.join(source_names)}"
